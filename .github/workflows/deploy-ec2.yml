@@ -1,0 +1,50 @@
+name: Build and Deploy to EC2
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - 'devstream-platform/**'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Copy project files via SSH
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: "devstream-platform/*"
+          target: "/home/${{ secrets.EC2_USER }}/app"
+          strip_components: 1
+
+      - name: Deploy application using Docker Compose
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            cd /home/${{ secrets.EC2_USER }}/app
+            
+            # Create or update the .env file with secrets from GitHub
+            echo "DB_USER=${{ secrets.POSTGRES_USER }}" > .env
+            echo "DB_PASSWORD=${{ secrets.POSTGRES_PASSWORD }}" >> .env
+            echo "DB_NAME=devstream" >> .env
+            echo "JWT_SECRET=${{ secrets.JWT_SECRET }}" >> .env
+            
+            # Rebuild and restart the containers
+            docker-compose down
+            docker-compose build
+            docker-compose up -d
+            
+            # Health check summary
+            sleep 10
+            docker-compose ps
