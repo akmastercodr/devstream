@@ -51,16 +51,16 @@ jobs:
       - name: Force new deployment of ECS services
         run: |
           # Gateway Service
-          aws ecs update-service --cluster ${{ env.ECS1_CLUSTER }} --service gateway --force-new-deployment
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service gateway --force-new-deployment
           
           # Auth Service
-          aws ecs update-service --cluster ${{ env.ECS1_CLUSTER }} --service auth-service --force-new-deployment
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service auth-service --force-new-deployment
           
           # Project Service
-          aws ecs update-service --cluster ${{ env.ECS1_CLUSTER }} --service project-service --force-new-deployment
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service project-service --force-new-deployment
           
           # Metrics Worker
-          aws ecs update-service --cluster ${{ env.ECS1_CLUSTER }} --service metrics-worker --force-new-deployment
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service metrics-worker --force-new-deployment
           
           # Frontend
-          aws ecs update-service --cluster ${{ env.ECS1_CLUSTER }} --service frontend --force-new-deployment
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service frontend --force-new-deployment
