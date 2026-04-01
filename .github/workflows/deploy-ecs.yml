@@ -1,0 +1,66 @@
+name: Build and Deploy to ECS
+
+on:
+  push:
+    branches:
+      - main
+
+env:
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ECS_CLUSTER: devstream-cluster
+
+jobs:
+  deploy:
+    name: Build, Push, and Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS Credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag, and push images to ECR
+        env:
+          REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: latest
+        run: |
+          # Build docker images
+          docker build -t $REGISTRY/devstream/gateway:$IMAGE_TAG ./gateway
+          docker build -t $REGISTRY/devstream/auth-service:$IMAGE_TAG ./auth-service
+          docker build -t $REGISTRY/devstream/project-service:$IMAGE_TAG ./project-service
+          docker build -t $REGISTRY/devstream/metrics-worker:$IMAGE_TAG ./metrics-worker
+          docker build -t $REGISTRY/devstream/frontend:$IMAGE_TAG ./frontend
+          
+          # Push docker images
+          docker push $REGISTRY/devstream/gateway:$IMAGE_TAG
+          docker push $REGISTRY/devstream/auth-service:$IMAGE_TAG
+          docker push $REGISTRY/devstream/project-service:$IMAGE_TAG
+          docker push $REGISTRY/devstream/metrics-worker:$IMAGE_TAG
+          docker push $REGISTRY/devstream/frontend:$IMAGE_TAG
+
+      - name: Force new deployment of ECS services
+        run: |
+          # Gateway Service
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service gateway --force-new-deployment
+          
+          # Auth Service
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service auth-service --force-new-deployment
+          
+          # Project Service
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service project-service --force-new-deployment
+          
+          # Metrics Worker
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service metrics-worker --force-new-deployment
+          
+          # Frontend
+          aws ecs update-service --cluster ${{ env.ECS_CLUSTER }} --service frontend --force-new-deployment
